@@ -514,6 +514,12 @@ select {
 .button:disabled {
   opacity: 0.48;
   cursor: not-allowed;
+  filter: grayscale(0.6);
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--muted) !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .button-primary {
@@ -964,4 +970,162 @@ select {
     gap: 10px;
     align-items: flex-start;
   }
+}
+
+/* Mobile-specific styles (max-width: 768px) */
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 16px;
+  }
+  
+  .header {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 1.2rem;
+  }
+  
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+  }
+  
+  .deck-panels {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+  
+  .agent-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .kanban-grid {
+    grid-template-columns: repeat(4, minmax(240px, 1fr)) !important;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  
+  .kanban-grid::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .kanban-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 3px;
+  }
+  
+  .kanban-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+  }
+  
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .meeting-filters {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .meeting-filters > * {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 120px;
+  }
+  
+  .meeting-card {
+    padding: 14px;
+  }
+  
+  .meeting-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .meeting-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .send-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .dialog-panel {
+    width: 90vw !important;
+    max-width: 90vw !important;
+    margin: 0 5vw;
+  }
+  
+  .dialog-backdrop {
+    padding: 16px;
+  }
+  
+  /* Hide non-essential icons on mobile */
+  .status-dot {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .trend-pill svg {
+    display: none;
+  }
+}
+
+/* Dialog Backdrop */
+.dialog-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+.dialog-panel {
+  width: 440px;
+  max-width: 90vw;
+  padding: 24px;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.dialog-header h3 {
+  margin: 0;
+}
+
+.dialog-content {
+  margin-top: 16px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--emerald);
 }

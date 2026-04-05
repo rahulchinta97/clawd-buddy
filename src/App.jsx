@@ -5,6 +5,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { AnimatePresence, motion } from "framer-motion";
 import DOMPurify from "dompurify";
 import { format, formatDistanceToNow, isAfter, parseISO, subDays } from "date-fns";
+import ErrorBoundary from "./ErrorBoundary";
+import Skeleton from "./Skeleton";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -412,9 +414,9 @@ const GlassCard = forwardRef(function GlassCard({ className, children }, ref) {
   );
 });
 
-function Badge({ children, className, style }) {
+function Badge({ children, className, style, role = "status" }) {
   return (
-    <span className={cn("badge", className)} style={style}>
+    <span className={cn("badge", className)} style={style} role={role}>
       {children}
     </span>
   );
@@ -491,16 +493,15 @@ function Dialog({ open, onOpenChange, title, children }) {
   );
 }
 
-function markdownToHtml(markdown) {
-  const html = markdown
-    .replace(/^## (.*)$/gm, "<h4>$1</h4>")
-    .replace(/^\- (.*)$/gm, "<li>$1</li>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/(<li>.*<\/li>)/gs, "<ul>$1</ul>");
-
-  return DOMPurify.sanitize(`<p>${html}</p>`);
-}
+const markdownToHtml = (markdown) =>
+  DOMPurify.sanitize(
+    `<p>${markdown
+      .replace(/^## (.*)$/gm, "</p><h4>$1</h4><p>")
+      .replace(/^\- (.*)$/gm, "<li>$1</li>")
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(<li>.*?<\/li>)/gs, "<ul>$0</ul>")
+      .replace(/\n\n/g, "</p><p>")}</p>`
+  );
 
 function relativeDate(date) {
   return formatDistanceToNow(parseISO(date), { addSuffix: true });
@@ -517,6 +518,9 @@ function TabButton({ tab, active, onClick, index }) {
       className={cn("tab-button", active && "tab-button-active")}
       onClick={onClick}
       type="button"
+      aria-label={`${tab.label} tab`}
+      aria-selected={active}
+      role="tab"
     >
       <Icon size={16} />
       {tab.label}
@@ -595,7 +599,23 @@ export default function App() {
   const [sortBy, setSortBy] = useState("recent");
   const [page, setPage] = useState(1);
   const [expandedMeeting, setExpandedMeeting] = useState("m1");
+  const [isLoading, setIsLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [gatewayToken, setGatewayToken] = useState(localStorage.getItem("gatewayToken") || "");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  // Simulate loading for demo purposes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const memoizedMarkdownToHtml = useMemo(
+    () => (markdown) => markdownToHtml(markdown),
+    [],
+  );
 
   const visibleLogs = useMemo(
     () => (logFilter === "all" ? logEntries : logEntries.filter((entry) => entry.category === logFilter)),
@@ -700,7 +720,47 @@ export default function App() {
     );
   }
 
+  function handlePaginationClick(newPage) {
+    const maxPage = Math.max(1, Math.ceil(filteredMeetings.length / 25));
+    setPage(Math.max(1, Math.min(newPage, maxPage)));
+  }
+
   function renderDeck() {
+    if (isLoading) {
+      return (
+        <div className="tab-layout">
+          <div className="metric-grid">
+            <Skeleton type="metric" count={4} />
+          </div>
+          <div className="deck-panels">
+            <div className="glass-card activity-panel">
+              <div className="panel-header">
+                <div>
+                  <div className="skeleton-line skeleton-line-small" style={{ width: '120px' }}></div>
+                  <div className="skeleton-line skeleton-line-medium" style={{ width: '180px', marginTop: '8px' }}></div>
+                </div>
+                <div className="skeleton-pill" style={{ width: '80px' }}></div>
+              </div>
+              <div className="activity-list" style={{ marginTop: '16px' }}>
+                <Skeleton type="card" count={5} />
+              </div>
+            </div>
+            <div className="glass-card status-panel">
+              <div className="panel-header">
+                <div>
+                  <div className="skeleton-line skeleton-line-small" style={{ width: '120px' }}></div>
+                  <div className="skeleton-line skeleton-line-medium" style={{ width: '180px', marginTop: '8px' }}></div>
+                </div>
+              </div>
+              <div className="status-grid" style={{ marginTop: '16px' }}>
+                <Skeleton type="agent" count={3} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="tab-layout">
         <div className="metric-grid">
@@ -786,6 +846,14 @@ export default function App() {
   }
 
   function renderAgents() {
+    if (isLoading) {
+      return (
+        <div className="agent-grid">
+          <Skeleton type="agent" count={3} />
+        </div>
+      );
+    }
+    
     return (
       <>
         <div className="agent-grid">
@@ -978,6 +1046,51 @@ export default function App() {
   }
 
   function renderMeetings() {
+    if (isLoading) {
+      return (
+        <div className="meeting-layout">
+          <div className="metric-grid">
+            <Skeleton type="metric" count={4} />
+          </div>
+          <div className="charts-grid">
+            <div className="glass-card">
+              <div className="panel-header">
+                <div>
+                  <div className="skeleton-line skeleton-line-small" style={{ width: '180px' }}></div>
+                  <div className="skeleton-line skeleton-line-medium" style={{ width: '140px', marginTop: '8px' }}></div>
+                </div>
+              </div>
+              <div className="chart-shell" style={{ height: '260px' }}>
+                <Skeleton type="chart" />
+              </div>
+            </div>
+            <div className="glass-card">
+              <div className="panel-header">
+                <div>
+                  <div className="skeleton-line skeleton-line-small" style={{ width: '180px' }}></div>
+                  <div className="skeleton-line skeleton-line-medium" style={{ width: '140px', marginTop: '8px' }}></div>
+                </div>
+              </div>
+              <div className="chart-shell" style={{ height: '260px' }}>
+                <Skeleton type="chart" />
+              </div>
+            </div>
+          </div>
+          <div className="glass-card" style={{ marginTop: '24px' }}>
+            <div className="panel-header">
+              <div>
+                <div className="skeleton-line skeleton-line-small" style={{ width: '180px' }}></div>
+                <div className="skeleton-line skeleton-line-medium" style={{ width: '140px', marginTop: '8px' }}></div>
+              </div>
+            </div>
+            <div style={{ marginTop: '20px' }}>
+              <Skeleton type="meeting" count={5} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="meeting-layout">
         <div className="metric-grid">
@@ -1139,7 +1252,7 @@ export default function App() {
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="meeting-detail">
                         <div className="meeting-detail-grid">
                           <div>
-                            <div className="sanitized-summary" dangerouslySetInnerHTML={{ __html: markdownToHtml(meeting.summary) }} />
+                            <div className="sanitized-summary" dangerouslySetInnerHTML={{ __html: memoizedMarkdownToHtml(meeting.summary) }} />
                             <div className="insight-line">
                               <Sparkles size={15} />
                               <span>{meeting.ai_insights}</span>
@@ -1161,11 +1274,21 @@ export default function App() {
                               <span>Captured: {relativeDate(meeting.date)}</span>
                             </div>
                             <div className="detail-actions">
-                              <Button variant="secondary" disabled={!meeting.fathom_url}>
+                              <Button
+                                variant="secondary"
+                                disabled={!meeting.fathom_url}
+                                aria-label={meeting.fathom_url ? "Open recording" : "No recording available"}
+                                title={meeting.fathom_url ? "Open Fathom recording" : "No recording available"}
+                              >
                                 <ExternalLink size={14} />
                                 Open Recording
                               </Button>
-                              <Button variant="secondary" disabled={!meeting.share_url}>
+                              <Button
+                                variant="secondary"
+                                disabled={!meeting.share_url}
+                                aria-label={meeting.share_url ? "Share meeting link" : "No share link available"}
+                                title={meeting.share_url ? "Copy share link" : "No share link available"}
+                              >
                                 <Globe size={14} />
                                 Share Link
                               </Button>
@@ -1192,16 +1315,22 @@ export default function App() {
             })}
           </div>
           <div className="pagination-row">
-            <Button variant="secondary" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
+            <Button
+              variant="secondary"
+              onClick={() => handlePaginationClick(page - 1)}
+              disabled={page === 1}
+              aria-label="Previous page"
+            >
               Previous
             </Button>
-            <span>
+            <span aria-live="polite">
               Page {page} of {Math.max(1, Math.ceil(filteredMeetings.length / 25))}
             </span>
             <Button
               variant="secondary"
-              onClick={() => setPage((current) => Math.min(Math.max(1, Math.ceil(filteredMeetings.length / 25)), current + 1))}
+              onClick={() => handlePaginationClick(page + 1)}
               disabled={page >= Math.max(1, Math.ceil(filteredMeetings.length / 25))}
+              aria-label="Next page"
             >
               Next
             </Button>
@@ -1234,7 +1363,12 @@ export default function App() {
             <p>{topAgent.currentActivity}</p>
             <span>Last seen: {topAgent.lastSeen}</span>
           </div>
-          <button className="settings-button" type="button" aria-label="Settings">
+          <button 
+            className="settings-button" 
+            type="button" 
+            aria-label="Settings"
+            onClick={() => setShowSettings(true)}
+          >
             <Settings size={18} />
           </button>
         </div>
@@ -1255,13 +1389,131 @@ export default function App() {
           transition={{ duration: 0.2 }}
           className="content-area"
         >
-          {activeTab === "deck" && renderDeck()}
-          {activeTab === "agents" && renderAgents()}
-          {activeTab === "tasks" && renderTasks()}
-          {activeTab === "logs" && renderLogs()}
-          {activeTab === "council" && renderCouncil()}
-          {activeTab === "meetings" && renderMeetings()}
+          {activeTab === "deck" && (
+            <ErrorBoundary debug={false}>
+              {renderDeck()}
+            </ErrorBoundary>
+          )}
+          {activeTab === "agents" && (
+            <ErrorBoundary debug={false}>
+              {renderAgents()}
+            </ErrorBoundary>
+          )}
+          {activeTab === "tasks" && (
+            <ErrorBoundary debug={false}>
+              {renderTasks()}
+            </ErrorBoundary>
+          )}
+          {activeTab === "logs" && (
+            <ErrorBoundary debug={false}>
+              {renderLogs()}
+            </ErrorBoundary>
+          )}
+          {activeTab === "council" && (
+            <ErrorBoundary debug={false}>
+              {renderCouncil()}
+            </ErrorBoundary>
+          )}
+          {activeTab === "meetings" && (
+            <ErrorBoundary debug={false}>
+              {renderMeetings()}
+            </ErrorBoundary>
+          )}
         </motion.main>
+      </AnimatePresence>
+
+      {/* Settings Dialog */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            className="dialog-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowSettings(false)}
+          >
+            <motion.div
+              className="dialog-panel glass-card"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="dialog-header">
+                <h3>Settings</h3>
+                <button 
+                  className="button button-ghost" 
+                  onClick={() => setShowSettings(false)}
+                  aria-label="Close settings"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="dialog-content">
+                <p style={{ color: 'var(--secondary)', marginBottom: '20px' }}>
+                  Configure your ClawBuddy connection settings
+                </p>
+                
+                <div style={{ marginBottom: '24px' }}>
+                  <label 
+                    htmlFor="gatewayToken" 
+                    style={{ 
+                      display: 'block', 
+                      marginBottom: '8px', 
+                      color: 'var(--text)',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Gateway Token
+                  </label>
+                  <input
+                    id="gatewayToken"
+                    type="password"
+                    value={gatewayToken}
+                    onChange={(e) => setGatewayToken(e.target.value)}
+                    placeholder="Enter your gateway token"
+                    className="input"
+                    style={{ width: '100%' }}
+                    aria-describedby="tokenHelp"
+                  />
+                  <div 
+                    id="tokenHelp" 
+                    style={{ 
+                      marginTop: '6px', 
+                      fontSize: '0.8rem', 
+                      color: 'var(--secondary)'
+                    }}
+                  >
+                    Your token is stored locally in browser storage. Find it at ~/.openclaw/gateway.token
+                  </div>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button 
+                    className="button button-secondary" 
+                    onClick={() => setShowSettings(false)}
+                    aria-label="Cancel changes"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="button button-primary" 
+                    onClick={() => {
+                      localStorage.setItem('gatewayToken', gatewayToken);
+                      setShowSettings(false);
+                      // Show success feedback
+                      alert('Settings saved successfully!');
+                    }}
+                    aria-label="Save settings"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
